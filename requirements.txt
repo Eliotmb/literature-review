@@ -1,0 +1,13 @@
+# Required Python packages for Academic Paper Collection Tool
+
+# Core dependencies
+PyYAML>=6.0.1
+requests>=2.31.0
+
+# Web application
+Flask>=3.0.0
+
+# Database
+# sqlite3 is included in Python standard library
+
+# No additional ML dependencies needed since we're using Ollama via API

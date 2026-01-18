@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Academic Paper Collector</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📚 Literature review helper</h1>
+            <p class="subtitle">Collect and analyze research papers for your literature review</p>
+        </header>
+
+        <div class="form-container">
+            <form id="collectionForm">
+                <!-- Query Section -->
+                <div class="form-section">
+                    <h2>🔍 Search Query</h2>
+                    <p class="help-text">Enter your search query with operators. Use AND, OR, and "" for exact phrases.</p>
+                    <p class="help-text" style="font-size: 0.9em; color: #666;">Examples:
+                        <br>• <code style="background: #f5f5f5; padding: 2px 4px;">"critical infrastructure" AND optimization</code>
+                        <br>• <code style="background: #f5f5f5; padding: 2px 4px;">smart grid OR power systems AND resilience</code>
+                        <br>• <code style="background: #f5f5f5; padding: 2px 4px;">"machine learning" AND (security OR privacy)</code>
+                    </p>
+                    <textarea id="searchQuery" name="search_query" placeholder="e.g., critical infrastructure AND smart grid OR optimization" required style="width: 100%; min-height: 80px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; font-size: 14px;"></textarea>
+                </div>
+
+                <!-- Databases Section -->
+                <div class="form-section">
+                    <h2>🗄️ Select Databases</h2>
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="database" value="semantic_scholar" checked>
+                            <span>Semantic Scholar</span>
+                            <small>Comprehensive academic database (Free)</small>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="database" value="arxiv" checked>
+                            <span>arXiv</span>
+                            <small>Preprints in CS, Physics, Math (Free)</small>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="database" value="dblp" checked>
+                            <span>DBLP</span>
+                            <small>Computer Science bibliography (Free)</small>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="database" value="ieee">
+                            <span>IEEE Xplore</span>
+                            <small>Engineering & technology papers (Requires API key)</small>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="database" value="springer">
+                            <span>SpringerLink</span>
+                            <small>Science & engineering journals (Requires API key)</small>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="database" value="sciencedirect">
+                            <span>ScienceDirect</span>
+                            <small>Elsevier journals & books (Requires API key)</small>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="database" value="acm">
+                            <span>ACM Digital Library</span>
+                            <small>Computing literature (Requires institutional access)</small>
+                        </label>
+                    </div>
+                    <div class="api-key-notice">
+                        <strong>⚠️ Note:</strong> IEEE, Springer, and ScienceDirect require API keys. 
+                        Set environment variables: <code>IEEE_API_KEY</code>, <code>SPRINGER_API_KEY</code>, <code>SCIENCEDIRECT_API_KEY</code>
+                    </div>
+                </div>
+
+                <!-- Parameters Section -->
+                <div class="form-section">
+                    <h2>⚙️ Collection Parameters</h2>
+                    <div class="parameter-grid">
+                        <div class="parameter-item">
+                            <label for="yearMin">Start Year</label>
+                            <input type="number" id="yearMin" value="2020" min="1990" max="2026">
+                        </div>
+                        <div class="parameter-item">
+                            <label for="yearMax">End Year</label>
+                            <input type="number" id="yearMax" value="2025" min="1990" max="2026">
+                        </div>
+                        <div class="parameter-item">
+                            <label for="maxPapers">Max Papers</label>
+                            <input type="number" id="maxPapers" value="150" min="10" max="500">
+                        </div>
+                        <div class="parameter-item">
+                            <label for="minCitations">Min Citations</label>
+                            <input type="number" id="minCitations" value="1" min="0" max="100">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="form-section">
+                    <button type="submit" class="btn-primary" id="submitBtn">
+                        🚀 Start Collection
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Progress Section (Hidden initially) -->
+        <div id="progressSection" class="progress-container" style="display: none;">
+            <h2>Collection Progress</h2>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <p id="progressMessage" class="progress-message">Initializing...</p>
+            <p id="progressStats" class="progress-stats"></p>
+        </div>
+
+        <!-- Error Section -->
+        <div id="errorSection" class="error-container" style="display: none;">
+            <h3>⚠️ Error</h3>
+            <p id="errorMessage"></p>
+            <button onclick="location.reload()" class="btn-secondary">Try Again</button>
+        </div>
+    </div>
+
+    <script>
+        let currentTaskId = null;
+
+        // Handle form submission
+        document.getElementById('collectionForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Get search query
+            const query = document.getElementById('searchQuery').value.trim();
+            
+            const databases = Array.from(document.querySelectorAll('input[name="database"]:checked'))
+                .map(cb => cb.value);
+
+            const yearMin = parseInt(document.getElementById('yearMin').value);
+            const yearMax = parseInt(document.getElementById('yearMax').value);
+            const maxPapers = parseInt(document.getElementById('maxPapers').value);
+            const minCitations = parseInt(document.getElementById('minCitations').value);
+
+            console.log('Form submitted with:', { query, databases, yearMin, yearMax, maxPapers, minCitations });
+
+            // Validate
+            if (query.length === 0) {
+                alert('Please enter a search query');
+                return;
+            }
+
+            if (databases.length === 0) {
+                alert('Please select at least one database');
+                return;
+            }
+
+            // Hide form, show progress
+            document.querySelector('.form-container').style.display = 'none';
+            document.getElementById('progressSection').style.display = 'block';
+
+            try {
+                // Start collection
+                const response = await fetch('/start_collection', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        search_query: query,
+                        databases,
+                        year_min: yearMin,
+                        year_max: yearMax,
+                        max_papers: maxPapers,
+                        min_citations: minCitations
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+
+                currentTaskId = data.task_id;
+                pollTaskStatus();
+
+            } catch (error) {
+                showError('Failed to start collection: ' + error.message);
+            }
+        });
+
+        // Poll task status
+        function pollTaskStatus() {
+            if (!currentTaskId) return;
+
+            fetch(`/task_status/${currentTaskId}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Update progress
+                    document.getElementById('progressFill').style.width = data.progress + '%';
+                    document.getElementById('progressMessage').textContent = data.message;
+
+                    if (data.total_papers > 0) {
+                        document.getElementById('progressStats').textContent = 
+                            `Found ${data.total_papers} papers`;
+                    }
+
+                    // Check status
+                    if (data.status === 'completed') {
+                        // Redirect to results
+                        window.location.href = `/results/${currentTaskId}`;
+                    } else if (data.status === 'error') {
+                        showError(data.error || 'Collection failed');
+                    } else {
+                        // Continue polling
+                        setTimeout(pollTaskStatus, 1000);
+                    }
+                })
+                .catch(error => {
+                    showError('Error checking status: ' + error.message);
+                });
+        }
+
+        function showError(message) {
+            document.getElementById('progressSection').style.display = 'none';
+            document.getElementById('errorSection').style.display = 'block';
+            document.getElementById('errorMessage').textContent = message;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collection Results</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>✅ Collection Complete!</h1>
+            <p class="subtitle">Your papers have been collected and analyzed</p>
+        </header>
+
+        <div class="results-container">
+            <!-- Summary Statistics -->
+            <div class="stats-card">
+                <h2>📊 Collection Summary</h2>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value">{{ task.total_papers }}</div>
+                        <div class="stat-label">Total Papers</div>
+                    </div>
+                    {% if task.results.statistics.by_source %}
+                    <div class="stat-item">
+                        <div class="stat-value">{{ task.results.statistics.by_source|length }}</div>
+                        <div class="stat-label">Data Sources</div>
+                    </div>
+                    {% endif %}
+                    {% if task.results.statistics.avg_citations %}
+                    <div class="stat-item">
+                        <div class="stat-value">{{ "%.1f"|format(task.results.statistics.avg_citations) }}</div>
+                        <div class="stat-label">Avg Citations</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- By Source -->
+            {% if task.results.statistics.by_source %}
+            <div class="stats-card">
+                <h3>Papers by Source</h3>
+                <div class="source-list">
+                    {% for source, count in task.results.statistics.by_source.items() %}
+                    <div class="source-item">
+                        <span class="source-name">{{ source }}</span>
+                        <span class="source-count">{{ count }} papers</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- By Year -->
+            {% if task.results.statistics.by_year %}
+            <div class="stats-card">
+                <h3>Papers by Year</h3>
+                <div class="year-chart">
+                    {% for year, count in task.results.statistics.by_year.items()|sort(reverse=True) %}
+                    <div class="year-bar">
+                        <span class="year-label">{{ year }}</span>
+                        <div class="bar-container">
+                            <div class="bar-fill" style="width: {{ (count / task.total_papers * 100)|int }}%"></div>
+                            <span class="bar-value">{{ count }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Top Cited Papers -->
+            {% if task.results.statistics.top_cited %}
+            <div class="stats-card">
+                <h3>🏆 Top Cited Papers</h3>
+                <div class="papers-list">
+                    {% for paper in task.results.statistics.top_cited[:5] %}
+                    <div class="paper-item">
+                        <div class="paper-title">{{ paper.title }}</div>
+                        <div class="paper-citations">{{ paper.citations }} citations</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Download Section -->
+            <div class="download-card">
+                <h2>📥 Download Results</h2>
+                <p>Choose your preferred format:</p>
+                <div class="download-buttons">
+                    <a href="{{ url_for('download_file', task_id=task.task_id, file_type='csv') }}" 
+                       class="download-btn csv">
+                        <span class="icon">📊</span>
+                        <span>CSV</span>
+                        <small>Excel compatible</small>
+                    </a>
+                    <a href="{{ url_for('download_file', task_id=task.task_id, file_type='json') }}" 
+                       class="download-btn json">
+                        <span class="icon">📋</span>
+                        <span>JSON</span>
+                        <small>Structured data</small>
+                    </a>
+                    <a href="{{ url_for('download_file', task_id=task.task_id, file_type='bibtex') }}" 
+                       class="download-btn bibtex">
+                        <span class="icon">📖</span>
+                        <span>BibTeX</span>
+                        <small>LaTeX citations</small>
+                    </a>
+                </div>
+            </div>
+
+            <!-- New Collection -->
+            <div class="action-buttons">
+                <a href="{{ url_for('index') }}" class="btn-primary">
+                    🔄 Start New Collection
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

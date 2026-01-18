@@ -1,0 +1,183 @@
+# Academic Paper Collection Configuration
+
+# Survey Information
+survey:
+  topic: "critical infrastructure systems"
+  title: "A Systematic Mapping on Optimization under Uncertainty in Safety-critical Systems"
+  description: "Academic Paper Collection & Analysis Tool"
+
+# Search Parameters
+# Note: Split complex OR queries into separate simple terms for the collector
+search_terms:
+  primary:
+    - "critical infrastructure"
+    - "power distribution networks"
+    - "smart grid"
+    - "communication networks"
+    - "water distribution networks"
+    - "civil infrastructure"
+    - "infrastructure resilience"
+    # Individual critical assets
+    - "power systems"
+    - "energy infrastructure"
+    - "pipeline systems"
+    - "data center"
+    - "telecommunication networks"
+    # Combined terms for better targeting
+    - "infrastructure optimization"
+    - "optimization"
+    - "optimal"
+    - "network resilience"
+
+  secondary:
+    - "uncertainty"
+    - "optimization"
+    - "robust designs"
+    - "no regret"
+    - "stochastic"
+    - "resilient systems"
+    - "reliable systems"
+    - "risk management"
+    - "decision under uncertainty"
+    - "reliability"
+    - "reliability-based design optimisation"
+    - "safety analysis"
+  
+  modifiers:
+    - "risk"
+    - "risk management"
+    - "decision making"
+    - "disaster reduction"
+    - "system failure"
+    - "vulnerability"
+    - "essential services"
+    # Split the OR queries into separate terms
+    - "interoperability"
+    - "interdependence"
+    - "cascading failures"
+    - "cascading effects"
+    # Infrastructure-specific modifiers
+    - "failure analysis"
+    - "critical systems"
+    - "infrastructure protection"
+    - "emergency response"
+    - "disaster recovery"
+    - "system reliability"
+    - "fault tolerance"
+    - "security threats"
+    - "cyber-physical systems"
+    - "infrastructure security"
+    - "disruption management"
+    - "crisis management"
+
+# Collection Settings
+collection:
+  max_papers_per_source: 150 
+  min_year: 2020
+  max_year: 2025
+  min_citations: 1
+  enable_parallel_collection: true
+  
+# Database Configuration
+database:
+  path: "data/papers.db"
+  backup_interval: 100
+  vacuum_on_startup: false
+  
+# Quality Filters
+quality_filters:
+  min_title_length: 5
+  exclude_keywords:
+    - "tutorial"
+    - "workshop"
+    - "demo"
+    - "poster"
+  
+  preferred_venues:
+    - "IEEE"
+    - "ACM"
+    - "Springer"
+    - "Elsevier"
+    - "RESS"
+    - "reliability engineering and system safety"
+    - "risk analysis"
+    - "structural safety"
+    - "engineering structures"
+    - "computer-aided civil and infrastructure engineering"
+    - "infrastructure systems"
+    - "sustainable cities and society"
+    - "resilient cities and structures"
+    - "international journal of critical infrastructure protection"
+    - "international journal of disaster risk reduction"
+    - "IEEE transactions on power systems"
+    - "IEEE transactions on smart grid"
+    - "IEEE transactions on reliability"
+    - "nature energy"
+    - "journal of risk and uncertainty"
+    - "nature climate change"
+    - "safety science"
+    - "sustainable and resilient infrastructure"
+  
+  scoring_weights:
+    citations: 0.3
+    venue_quality: 0.2
+    year_recency: 0.2
+    title_relevance: 0.3
+
+# Export Settings
+export:
+  formats: ["csv", "json", "bibtex"]
+  output_dir: "results"
+  include_analysis: true
+  max_abstract_length: 500
+  
+# API Configuration
+apis:
+  semantic_scholar:
+    rate_limit: 5.0  # 5 seconds between requests
+    timeout: 30
+    retry_attempts: 3
+  
+  dblp:
+    rate_limit: 5.0  # 5 seconds between requests
+    timeout: 40
+    retry_attempts: 3
+  
+  arxiv:
+    rate_limit: 1.0  # 1 second between requests
+    timeout: 25
+    retry_attempts: 3
+
+# Ollama Configuration for AI Analysis
+ollama:
+  url: "http://localhost:11434"
+  model: "deepseek-r1:7b"
+  enabled: true
+  timeout: 120
+  temperature: 0.3
+  batch_size: 1
+  
+# Deduplication Settings
+deduplication:
+  title_similarity_threshold: 0.85
+  author_matching: true 
+  venue_matching: true
+  
+# Logging Configuration
+logging:
+  level: "INFO"
+  file: "paper_collection.log"
+  max_size_mb: 10
+  backup_count: 5
+  
+# Performance Settings
+performance:
+  max_concurrent_requests: 5
+  request_delay: 1.0
+  memory_limit_mb: 1024
+  
+# GPU Settings (for sentence transformers) - Disabled since using Ollama
+gpu:
+  enabled: false
+  device: "cuda"
+  model: "sentence-transformers/all-MiniLM-L6-v2"

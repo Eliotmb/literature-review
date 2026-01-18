@@ -1,0 +1,475 @@
+/* Modern CSS for Academic Paper Collector */
+
+:root {
+    --primary-color: #2563eb;
+    --primary-dark: #1e40af;
+    --secondary-color: #64748b;
+    --success-color: #10b981;
+    --error-color: #ef4444;
+    --bg-color: #f8fafc;
+    --card-bg: #ffffff;
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --border-color: #e2e8f0;
+    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+    color: var(--text-primary);
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 2rem;
+    color: white;
+}
+
+header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+}
+
+.subtitle {
+    font-size: 1.1rem;
+    opacity: 0.9;
+}
+
+.form-container, .results-container, .progress-container, .error-container {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: var(--shadow-lg);
+}
+
+.form-section {
+    margin-bottom: 2rem;
+}
+
+.form-section h2 {
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+.help-text {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 0.75rem;
+}
+
+/* Keywords */
+#keywordsContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.keyword-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+
+.keyword-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+/* Checkboxes */
+.checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: flex-start;
+    padding: 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.checkbox-label:hover {
+    border-color: var(--primary-color);
+    background: #f8fafc;
+}
+
+.checkbox-label input[type="checkbox"] {
+    margin-right: 1rem;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.checkbox-label span {
+    flex: 1;
+    display: block;
+}
+
+.checkbox-label small {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+}
+
+/* Parameters */
+.parameter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+}
+
+.parameter-item label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.parameter-item input[type="number"] {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 1rem;
+}
+
+.parameter-item input[type="number"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+/* Buttons */
+.btn-primary, .btn-secondary {
+    padding: 0.875rem 2rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-block;
+    text-decoration: none;
+    text-align: center;
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: white;
+    width: 100%;
+}
+
+.btn-primary:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.btn-secondary {
+    background: var(--bg-color);
+    color: var(--text-primary);
+    border: 2px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+/* Progress */
+.progress-bar {
+    width: 100%;
+    height: 24px;
+    background: var(--bg-color);
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 1.5rem 0;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), var(--success-color));
+    transition: width 0.3s ease;
+    border-radius: 12px;
+}
+
+.progress-message {
+    font-size: 1.1rem;
+    font-weight: 500;
+    text-align: center;
+    color: var(--text-primary);
+}
+
+.progress-stats {
+    text-align: center;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+}
+
+/* Results */
+.stats-card, .download-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow);
+}
+
+.stats-card h2, .stats-card h3, .download-card h2 {
+    margin-bottom: 1rem;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1.5rem;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 1rem;
+    background: var(--bg-color);
+    border-radius: 8px;
+}
+
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+}
+
+.source-list, .papers-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.source-item, .paper-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem;
+    background: var(--bg-color);
+    border-radius: 6px;
+}
+
+.source-name, .paper-title {
+    font-weight: 500;
+}
+
+.source-count, .paper-citations {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.year-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.year-bar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.year-label {
+    font-weight: 600;
+    min-width: 50px;
+}
+
+.bar-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.bar-fill {
+    height: 24px;
+    background: linear-gradient(90deg, var(--primary-color), var(--success-color));
+    border-radius: 4px;
+    min-width: 20px;
+}
+
+.bar-value {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+/* Download Buttons */
+.download-buttons {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.download-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1.5rem 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: all 0.2s;
+}
+
+.download-btn:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
+.download-btn .icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.download-btn span:not(.icon) {
+    font-weight: 600;
+}
+
+.download-btn small {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+}
+
+/* Action Buttons */
+.action-buttons {
+    text-align: center;
+    margin-top: 2rem;
+}
+
+/* Error */
+.error-container {
+    text-align: center;
+    background: white;
+}
+
+.error-container h3 {
+    color: var(--error-color);
+    margin-bottom: 1rem;
+}
+
+/* Search Mode Selection */
+.search-mode-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--bg-color);
+    border-radius: 8px;
+}
+
+.mode-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border: 2px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.mode-option:hover {
+    border-color: var(--primary-color);
+    background: white;
+}
+
+.mode-option input[type="radio"] {
+    width: 20px;
+    height: 20px;
+    margin-top: 2px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.mode-option input[type="radio"]:checked {
+    accent-color: var(--primary-color);
+}
+
+.mode-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    min-width: 100px;
+}
+
+.mode-desc {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+/* API Key Notice */
+.api-key-notice {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #fef3c7;
+    border-left: 4px solid #f59e0b;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    color: #78350f;
+}
+
+.api-key-notice code {
+    background: #fde68a;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+}
+
+.api-key-notice strong {
+    color: #92400e;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    header h1 {
+        font-size: 1.8rem;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .parameter-grid {
+        grid-template-columns: 1fr;
+    }
+}
