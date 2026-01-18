@@ -217,20 +217,26 @@ def start_collection():
 @app.route('/task_status/<task_id>')
 def task_status(task_id):
     """Get status of a collection task"""
-    task = collection_tasks.get(task_id)
-    
-    if not task:
-        return jsonify({'error': 'Task not found'}), 404
-    
-    return jsonify({
-        'task_id': task_id,
-        'status': task.status,
-        'progress': task.progress,
-        'message': task.message,
-        'total_papers': task.total_papers,
-        'error': task.error,
-        'results': task.results if task.status == 'completed' else None
-    })
+    try:
+        task = collection_tasks.get(task_id)
+        
+        if not task:
+            return jsonify({'error': 'Task not found'}), 404
+        
+        response_data = {
+            'task_id': task_id,
+            'status': task.status,
+            'progress': task.progress,
+            'message': task.message,
+            'total_papers': task.total_papers,
+            'error': task.error,
+            'results': task.results if task.status == 'completed' else None
+        }
+        logger.debug(f"Status response for {task_id}: {response_data}")
+        return jsonify(response_data)
+    except Exception as e:
+        logger.exception(f"Error getting task status for {task_id}")
+        return jsonify({'error': f'Server error: {str(e)}'}), 500
 
 
 @app.route('/results/<task_id>')

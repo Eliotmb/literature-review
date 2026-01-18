@@ -213,8 +213,18 @@
             if (!currentTaskId) return;
 
             fetch(`/task_status/${currentTaskId}`)
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
+                    if (data.error) {
+                        showError('Status error: ' + data.error);
+                        return;
+                    }
+
                     // Update progress
                     document.getElementById('progressFill').style.width = data.progress + '%';
                     document.getElementById('progressMessage').textContent = data.message;
@@ -236,6 +246,7 @@
                     }
                 })
                 .catch(error => {
+                    console.error('Polling error:', error);
                     showError('Error checking status: ' + error.message);
                 });
         }
