@@ -30,6 +30,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Global error handler
+@app.errorhandler(Exception)
+def handle_error(error):
+    """Handle all errors and return JSON"""
+    logger.exception("Unhandled error")
+    return jsonify({'error': f'Server error: {str(error)}'}), 500
+
 
 class CollectionTask:
     """Represents a paper collection task"""
@@ -160,6 +167,9 @@ def start_collection():
     """Start a new paper collection task"""
     try:
         data = request.json
+        if not data:
+            return jsonify({'error': 'No JSON data provided'}), 400
+        
         logger.info(f"Received request with data: {data}")
         
         # Get search query
@@ -201,7 +211,7 @@ def start_collection():
         
     except Exception as e:
         logger.exception("Error starting collection")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': f'Server error: {str(e)}'}), 500
 
 
 @app.route('/task_status/<task_id>')

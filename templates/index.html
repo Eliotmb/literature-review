@@ -175,7 +175,25 @@
                     })
                 });
 
-                const data = await response.json();
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers.get('content-type'));
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Server error:', errorText);
+                    showError(`Server error (${response.status}): ${errorText.substring(0, 200)}`);
+                    return;
+                }
+
+                let data;
+                try {
+                    data = await response.json();
+                } catch (parseError) {
+                    console.error('JSON parse error:', parseError);
+                    const responseText = await response.text();
+                    showError(`Invalid response from server: ${responseText.substring(0, 200)}`);
+                    return;
+                }
 
                 if (data.error) {
                     showError(data.error);
