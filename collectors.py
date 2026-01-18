@@ -47,12 +47,20 @@ class BaseCollector(ABC):
         self.last_request_time = time.time()
     
     def _make_request(self, url: str, params: Optional[Dict] = None) -> Optional[requests.Response]:
-        """Make HTTP request with retry logic"""
+        """Make HTTP request with retry logic and 429 handling"""
         self._rate_limit_wait()
         
         for attempt in range(self.retry_attempts):
             try:
                 response = requests.get(url, params=params, timeout=self.timeout)
+                
+                # Handle rate limiting (429) specially
+                if response.status_code == 429:
+                    wait_time = (2 ** attempt) * 10  # 10s, 20s, 40s exponential backoff
+                    self.logger.warning(f"Rate limited (429). Waiting {wait_time}s before retry {attempt + 1}/{self.retry_attempts}")
+                    time.sleep(wait_time)
+                    continue
+                
                 response.raise_for_status()
                 return response
             except requests.exceptions.RequestException as e:
@@ -74,7 +82,7 @@ class SemanticScholarCollector(BaseCollector):
     
     BASE_URL = "https://api.semanticscholar.org/graph/v1"
     
-    def __init__(self, rate_limit: float = 5.0, timeout: int = 30, retry_attempts: int = 3):
+    def __init__(self, rate_limit: float = 10.0, timeout: int = 30, retry_attempts: int = 5):
         super().__init__(rate_limit, timeout, retry_attempts)
     
     def search(self, query: str, max_results: int = 100, min_year: int = 2020, max_year: int = 2025) -> List[Dict]:
