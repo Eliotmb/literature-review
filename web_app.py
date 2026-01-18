@@ -90,6 +90,9 @@ def collect_papers_background(task_id, query, databases, year_min, year_max, max
         task.message = f'Collecting from {len(collectors)} databases...'
         all_papers = []
         
+        # Log the actual query being used
+        logger.info(f"Original query: {query}")
+        
         # Collect from each source using the user's query
         for source_name, collector in collectors.items():
             try:

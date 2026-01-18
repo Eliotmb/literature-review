@@ -20,6 +20,25 @@ class BaseCollector(ABC):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.last_request_time = 0
     
+    def _simplify_query(self, query: str) -> str:
+        """
+        Simplify query for better API compatibility.
+        Removes parentheses and complex boolean syntax.
+        
+        Examples:
+            "optimization" AND "transport" AND ("aviation" OR "railway")
+            -> "optimization" AND "transport" AND "aviation" OR "railway"
+        """
+        # Remove outer parentheses
+        simplified = query
+        while '(' in simplified or ')' in simplified:
+            simplified = simplified.replace('(', '').replace(')', '')
+        
+        # Clean up extra spaces
+        simplified = ' '.join(simplified.split())
+        
+        return simplified
+    
     def _rate_limit_wait(self):
         """Enforce rate limiting"""
         elapsed = time.time() - self.last_request_time
@@ -62,15 +81,18 @@ class SemanticScholarCollector(BaseCollector):
         """Search Semantic Scholar for papers"""
         papers = []
         
+        # Simplify query for API compatibility
+        simplified_query = self._simplify_query(query)
+        
         url = f"{self.BASE_URL}/paper/search"
         params = {
-            'query': query,
+            'query': simplified_query,
             'limit': min(max_results, 100),
             'fields': 'paperId,title,authors,year,venue,abstract,citationCount,externalIds,url',
             'year': f'{min_year}-{max_year}'
         }
         
-        self.logger.info(f"Searching Semantic Scholar for: {query}")
+        self.logger.info(f"Searching Semantic Scholar for: {simplified_query}")
         response = self._make_request(url, params)
         
         if not response:
@@ -130,8 +152,9 @@ class ArXivCollector(BaseCollector):
         """Search arXiv for papers"""
         papers = []
         
-        # arXiv uses different query syntax
-        search_query = f'all:{query}'
+        # Simplify and prepare query for arXiv
+        simplified_query = self._simplify_query(query)
+        search_query = f'all:{simplified_query}'
         
         params = {
             'search_query': search_query,
@@ -220,13 +243,16 @@ class DBLPCollector(BaseCollector):
         """Search DBLP for papers"""
         papers = []
         
+        # Simplify query for DBLP
+        simplified_query = self._simplify_query(query)
+        
         params = {
-            'q': query,
+            'q': simplified_query,
             'format': 'json',
             'h': min(max_results, 1000)  # DBLP allows up to 1000 results
         }
         
-        self.logger.info(f"Searching DBLP for: {query}")
+        self.logger.info(f"Searching DBLP for: {simplified_query}")
         response = self._make_request(self.BASE_URL, params)
         
         if not response:
