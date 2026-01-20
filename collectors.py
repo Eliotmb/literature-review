@@ -153,7 +153,7 @@ class ArXivCollector(BaseCollector):
     
     BASE_URL = "http://export.arxiv.org/api/query"
     
-    def __init__(self, rate_limit: float = 1.0, timeout: int = 25, retry_attempts: int = 3):
+    def __init__(self, rate_limit: float = 5.0, timeout: int = 30, retry_attempts: int = 5):
         super().__init__(rate_limit, timeout, retry_attempts)
     
     def search(self, query: str, max_results: int = 100, min_year: int = 2020, max_year: int = 2025) -> List[Dict]:
@@ -172,10 +172,12 @@ class ArXivCollector(BaseCollector):
             'sortOrder': 'descending'
         }
         
-        self.logger.info(f"Searching arXiv for: {query}")
+        self.logger.info(f"Searching arXiv for: {simplified_query}")
+        self.logger.info(f"arXiv query parameters: {params}")
         response = self._make_request(self.BASE_URL, params)
         
         if not response:
+            self.logger.warning(f"arXiv returned no response for query: {simplified_query}")
             return papers
         
         try:
@@ -244,7 +246,7 @@ class DBLPCollector(BaseCollector):
     
     BASE_URL = "https://dblp.org/search/publ/api"
     
-    def __init__(self, rate_limit: float = 5.0, timeout: int = 40, retry_attempts: int = 3):
+    def __init__(self, rate_limit: float = 8.0, timeout: int = 40, retry_attempts: int = 5):
         super().__init__(rate_limit, timeout, retry_attempts)
     
     def search(self, query: str, max_results: int = 100, min_year: int = 2020, max_year: int = 2025) -> List[Dict]:
@@ -261,9 +263,11 @@ class DBLPCollector(BaseCollector):
         }
         
         self.logger.info(f"Searching DBLP for: {simplified_query}")
+        self.logger.info(f"DBLP query parameters: {params}")
         response = self._make_request(self.BASE_URL, params)
         
         if not response:
+            self.logger.warning(f"DBLP returned no response for query: {simplified_query}")
             return papers
         
         try:
