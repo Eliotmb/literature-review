@@ -86,39 +86,86 @@ class SemanticScholarCollector(BaseCollector):
         super().__init__(rate_limit, timeout, retry_attempts)
     
     def search(self, query: str, max_results: int = 100, min_year: int = 2020, max_year: int = 2025) -> List[Dict]:
-        """Search Semantic Scholar for papers"""
+        """Search Semantic Scholar for papers with pagination support"""
         papers = []
         
         # Simplify query for API compatibility
         simplified_query = self._simplify_query(query)
         
         url = f"{self.BASE_URL}/paper/search"
-        params = {
-            'query': simplified_query,
-            'limit': min(max_results, 100),
-            'fields': 'paperId,title,authors,year,venue,abstract,citationCount,externalIds,url',
-            'year': f'{min_year}-{max_year}'
-        }
         
-        self.logger.info(f"Searching Semantic Scholar for: {simplified_query}")
-        response = self._make_request(url, params)
+        # Semantic Scholar API limit is 100 per request, so we need pagination
+        limit_per_request = 100
+        offset = 0
         
-        if not response:
-            return papers
+        self.logger.info(f"Searching Semantic Scholar for: {simplified_query} (target: {max_results} papers)")
         
-        try:
-            data = response.json()
+        while len(papers) < max_results:
+            # Calculate how many we need in this batch
+            remaining = max_results - len(papers)
+            current_limit = min(limit_per_request, remaining)
             
-            if 'data' in data:
-                for item in data['data']:
-                    paper = self._parse_paper(item)
-                    if paper:
-                        papers.append(paper)
+            params = {
+                'query': simplified_query,
+                'limit': current_limit,
+                'offset': offset,
+                'fields': 'paperId,title,authors,year,venue,abstract,citationCount,externalIds,url',
+                'year': f'{min_year}-{max_year}'
+            }
             
-            self.logger.info(f"Found {len(papers)} papers from Semantic Scholar")
+            self.logger.info(f"Fetching batch: offset={offset}, limit={current_limit} (total so far: {len(papers)})")
+            response = self._make_request(url, params)
+            
+            if not response:
+                self.logger.warning("No response from Semantic Scholar, stopping pagination")
+                break
+            
+            try:
+                data = response.json()
+                
+                # Check if API has a total limit
+                total_available = data.get('total', None)
+                if total_available is not None:
+                    self.logger.info(f"Semantic Scholar reports {total_available} total results available")
+                    # Adjust max_results if API has a lower limit
+                    if total_available < max_results:
+                        self.logger.warning(f"API limit ({total_available}) is less than requested ({max_results})")
+                
+                if 'data' in data and data['data']:
+                    batch_items = data['data']
+                    batch_papers = []
+                    for item in batch_items:
+                        paper = self._parse_paper(item)
+                        if paper:
+                            batch_papers.append(paper)
+                    
+                    papers.extend(batch_papers)
+                    self.logger.info(f"Retrieved {len(batch_papers)} papers in this batch (from {len(batch_items)} API items, total: {len(papers)})")
+                    
+                    # If we got fewer items than requested, we've reached the end
+                    if len(batch_items) < current_limit:
+                        self.logger.info("Reached end of available results")
+                        break
+                    
+                    # Move to next page - use actual API response count, not filtered count
+                    offset += len(batch_items)
+                    
+                    # Safety check: if we've reached API's total limit
+                    if total_available and offset >= total_available:
+                        self.logger.info(f"Reached API total limit of {total_available}")
+                        break
+                else:
+                    # No more data available
+                    self.logger.info("No more results available")
+                    break
+            
+            except Exception as e:
+                self.logger.error(f"Error parsing Semantic Scholar response: {e}")
+                break
         
-        except Exception as e:
-            self.logger.error(f"Error parsing Semantic Scholar response: {e}")
+        # Limit to max_results in case we got slightly more
+        papers = papers[:max_results]
+        self.logger.info(f"Found {len(papers)} papers from Semantic Scholar (requested: {max_results})")
         
         return papers
     
@@ -157,46 +204,78 @@ class ArXivCollector(BaseCollector):
         super().__init__(rate_limit, timeout, retry_attempts)
     
     def search(self, query: str, max_results: int = 100, min_year: int = 2020, max_year: int = 2025) -> List[Dict]:
-        """Search arXiv for papers"""
+        """Search arXiv for papers with pagination support"""
         papers = []
         
         # Simplify and prepare query for arXiv
         simplified_query = self._simplify_query(query)
         search_query = f'all:{simplified_query}'
         
-        params = {
-            'search_query': search_query,
-            'start': 0,
-            'max_results': max_results,
-            'sortBy': 'relevance',
-            'sortOrder': 'descending'
-        }
+        # arXiv API supports pagination via start parameter
+        # Each request can return up to 2000 results, but we'll use smaller batches for reliability
+        batch_size = 200
+        start = 0
         
-        self.logger.info(f"Searching arXiv for: {simplified_query}")
-        self.logger.info(f"arXiv query parameters: {params}")
-        response = self._make_request(self.BASE_URL, params)
+        self.logger.info(f"Searching arXiv for: {simplified_query} (target: {max_results} papers)")
         
-        if not response:
-            self.logger.warning(f"arXiv returned no response for query: {simplified_query}")
-            return papers
-        
-        try:
-            # Parse XML response
-            root = ET.fromstring(response.content)
+        while len(papers) < max_results:
+            # Calculate how many we need in this batch
+            remaining = max_results - len(papers)
+            current_batch_size = min(batch_size, remaining)
             
-            # Define namespace
-            ns = {'atom': 'http://www.w3.org/2005/Atom',
-                  'arxiv': 'http://arxiv.org/schemas/atom'}
+            params = {
+                'search_query': search_query,
+                'start': start,
+                'max_results': current_batch_size,
+                'sortBy': 'relevance',
+                'sortOrder': 'descending'
+            }
             
-            for entry in root.findall('atom:entry', ns):
-                paper = self._parse_paper(entry, ns, min_year, max_year)
-                if paper:
-                    papers.append(paper)
+            self.logger.info(f"Fetching arXiv batch: start={start}, max_results={current_batch_size} (total so far: {len(papers)})")
+            response = self._make_request(self.BASE_URL, params)
             
-            self.logger.info(f"Found {len(papers)} papers from arXiv")
+            if not response:
+                self.logger.warning(f"arXiv returned no response for query: {simplified_query}")
+                break
+            
+            try:
+                # Parse XML response
+                root = ET.fromstring(response.content)
+                
+                # Define namespace
+                ns = {'atom': 'http://www.w3.org/2005/Atom',
+                      'arxiv': 'http://arxiv.org/schemas/atom'}
+                
+                batch_papers = []
+                entries = root.findall('atom:entry', ns)
+                
+                if not entries:
+                    self.logger.info("No more entries found, reached end of results")
+                    break
+                
+                for entry in entries:
+                    paper = self._parse_paper(entry, ns, min_year, max_year)
+                    if paper:
+                        batch_papers.append(paper)
+                
+                papers.extend(batch_papers)
+                self.logger.info(f"Retrieved {len(batch_papers)} papers in this batch (total: {len(papers)})")
+                
+                # If we got fewer papers than requested, we've reached the end
+                if len(entries) < current_batch_size:
+                    self.logger.info("Reached end of results")
+                    break
+                
+                # Move to next page
+                start += len(entries)
+            
+            except Exception as e:
+                self.logger.error(f"Error parsing arXiv response: {e}")
+                break
         
-        except Exception as e:
-            self.logger.error(f"Error parsing arXiv response: {e}")
+        # Limit to max_results in case we got slightly more
+        papers = papers[:max_results]
+        self.logger.info(f"Found {len(papers)} papers from arXiv (requested: {max_results})")
         
         return papers
     
@@ -350,38 +429,69 @@ class SpringerCollector(BaseCollector):
         self.api_key = api_key  # Requires API key from https://dev.springernature.com/
     
     def search(self, query: str, max_results: int = 100, min_year: int = 2020, max_year: int = 2025) -> List[Dict]:
-        """Search SpringerLink for papers"""
+        """Search SpringerLink for papers with pagination support"""
         if not self.api_key:
             self.logger.warning("SpringerLink API key not provided - skipping")
             return []
         
         papers = []
         
-        params = {
-            'q': query,
-            'api_key': self.api_key,
-            'p': min(max_results, 100),
-            's': 1
-        }
+        # Springer API limit is 100 per request, so we need pagination
+        limit_per_request = 100
+        start = 1
         
-        self.logger.info(f"Searching SpringerLink for: {query}")
-        response = self._make_request(self.BASE_URL, params)
+        self.logger.info(f"Searching SpringerLink for: {query} (target: {max_results} papers)")
         
-        if not response:
-            return papers
-        
-        try:
-            data = response.json()
-            records = data.get('records', [])
+        while len(papers) < max_results:
+            # Calculate how many we need in this batch
+            remaining = max_results - len(papers)
+            current_limit = min(limit_per_request, remaining)
             
-            for record in records:
-                paper = self._parse_paper(record, min_year, max_year)
-                if paper:
-                    papers.append(paper)
+            params = {
+                'q': query,
+                'api_key': self.api_key,
+                'p': current_limit,
+                's': start
+            }
             
-            self.logger.info(f"Found {len(papers)} papers from SpringerLink")
-        except Exception as e:
-            self.logger.error(f"Error parsing SpringerLink response: {e}")
+            self.logger.info(f"Fetching Springer batch: start={start}, limit={current_limit} (total so far: {len(papers)})")
+            response = self._make_request(self.BASE_URL, params)
+            
+            if not response:
+                break
+            
+            try:
+                data = response.json()
+                records = data.get('records', [])
+                
+                if not records:
+                    self.logger.info("No more records found, reached end of results")
+                    break
+                
+                batch_papers = []
+                for record in records:
+                    paper = self._parse_paper(record, min_year, max_year)
+                    if paper:
+                        batch_papers.append(paper)
+                
+                papers.extend(batch_papers)
+                self.logger.info(f"Retrieved {len(batch_papers)} papers in this batch (total: {len(papers)})")
+                
+                # If we got fewer papers than requested, we've reached the end
+                if len(records) < current_limit:
+                    self.logger.info("Reached end of results")
+                    break
+                
+                # Move to next page
+                start += len(records)
+            
+            except Exception as e:
+                self.logger.error(f"Error parsing SpringerLink response: {e}")
+                break
+        
+        # Limit to max_results in case we got slightly more
+        papers = papers[:max_results]
+        self.logger.info(f"Found {len(papers)} papers from SpringerLink (requested: {max_results})")
         
         return papers
     
@@ -520,42 +630,76 @@ class ScienceDirectCollector(BaseCollector):
         self.api_key = api_key  # Requires API key from https://dev.elsevier.com/
     
     def search(self, query: str, max_results: int = 100, min_year: int = 2020, max_year: int = 2025) -> List[Dict]:
-        """Search ScienceDirect for papers"""
+        """Search ScienceDirect for papers with pagination support"""
         if not self.api_key:
             self.logger.warning("ScienceDirect API key not provided - skipping")
             return []
         
         papers = []
         
-        params = {
-            'query': query,
-            'apiKey': self.api_key,
-            'count': min(max_results, 100),
-            'date': f"{min_year}-{max_year}"
-        }
+        # ScienceDirect API limit is 100 per request, so we need pagination
+        limit_per_request = 100
+        start = 0
         
         headers = {
             'X-ELS-APIKey': self.api_key,
             'Accept': 'application/json'
         }
         
-        self.logger.info(f"Searching ScienceDirect for: {query}")
+        self.logger.info(f"Searching ScienceDirect for: {query} (target: {max_results} papers)")
         
-        try:
-            response = requests.get(self.BASE_URL, params=params, headers=headers, timeout=self.timeout)
-            response.raise_for_status()
+        while len(papers) < max_results:
+            # Calculate how many we need in this batch
+            remaining = max_results - len(papers)
+            current_limit = min(limit_per_request, remaining)
             
-            data = response.json()
-            results = data.get('search-results', {}).get('entry', [])
+            params = {
+                'query': query,
+                'apiKey': self.api_key,
+                'count': current_limit,
+                'start': start,
+                'date': f"{min_year}-{max_year}"
+            }
             
-            for result in results:
-                paper = self._parse_paper(result, min_year, max_year)
-                if paper:
-                    papers.append(paper)
+            self.logger.info(f"Fetching ScienceDirect batch: start={start}, count={current_limit} (total so far: {len(papers)})")
             
-            self.logger.info(f"Found {len(papers)} papers from ScienceDirect")
-        except Exception as e:
-            self.logger.error(f"Error searching ScienceDirect: {e}")
+            try:
+                self._rate_limit_wait()
+                response = requests.get(self.BASE_URL, params=params, headers=headers, timeout=self.timeout)
+                response.raise_for_status()
+                
+                data = response.json()
+                results = data.get('search-results', {})
+                entries = results.get('entry', [])
+                
+                if not entries:
+                    self.logger.info("No more entries found, reached end of results")
+                    break
+                
+                batch_papers = []
+                for result in entries:
+                    paper = self._parse_paper(result, min_year, max_year)
+                    if paper:
+                        batch_papers.append(paper)
+                
+                papers.extend(batch_papers)
+                self.logger.info(f"Retrieved {len(batch_papers)} papers in this batch (total: {len(papers)})")
+                
+                # If we got fewer papers than requested, we've reached the end
+                if len(entries) < current_limit:
+                    self.logger.info("Reached end of results")
+                    break
+                
+                # Move to next page
+                start += len(entries)
+            
+            except Exception as e:
+                self.logger.error(f"Error searching ScienceDirect: {e}")
+                break
+        
+        # Limit to max_results in case we got slightly more
+        papers = papers[:max_results]
+        self.logger.info(f"Found {len(papers)} papers from ScienceDirect (requested: {max_results})")
         
         return papers
     

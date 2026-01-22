@@ -150,25 +150,46 @@ class Deduplicator:
     
     def find_duplicates_in_list(self, papers: List[Dict]) -> List[Tuple[int, int]]:
         """
-        Find all duplicate pairs in a list of papers
+        Find all duplicate pairs in a list of papers (optimized version)
         
         Returns: List of tuples containing indices of duplicate pairs
         """
         duplicates = []
         n = len(papers)
         
-        self.logger.info(f"Checking {n} papers for duplicates...")
+        self.logger.info(f"Checking {n} papers for duplicates (optimized algorithm)...")
         
-        for i in range(n):
-            for j in range(i + 1, n):
-                if self.are_duplicates(papers[i], papers[j]):
-                    duplicates.append((i, j))
-                    self.logger.debug(
-                        f"Found duplicate: '{papers[i].get('title', '')}' "
-                        f"and '{papers[j].get('title', '')}'"
-                    )
+        # Pre-normalize all titles for faster comparison
+        normalized_titles = [self._normalize_title(p.get('title', '')) for p in papers]
         
-        self.logger.info(f"Found {len(duplicates)} duplicate pairs")
+        # Use a more efficient approach: group by first few words of title
+        # This reduces comparisons significantly
+        title_groups = {}
+        for i, norm_title in enumerate(normalized_titles):
+            if not norm_title:
+                continue
+            # Use first 3 words as a key for grouping
+            key_words = ' '.join(norm_title.split()[:3]).lower()
+            if key_words not in title_groups:
+                title_groups[key_words] = []
+            title_groups[key_words].append(i)
+        
+        # Only compare papers within the same group (much faster)
+        comparisons = 0
+        for key, indices in title_groups.items():
+            if len(indices) > 1:
+                # Compare papers in this group
+                for idx_i, i in enumerate(indices):
+                    for j in indices[idx_i + 1:]:
+                        comparisons += 1
+                        if self.are_duplicates(papers[i], papers[j]):
+                            duplicates.append((i, j))
+                            self.logger.debug(
+                                f"Found duplicate: '{papers[i].get('title', '')[:50]}...' "
+                                f"and '{papers[j].get('title', '')[:50]}...'"
+                            )
+        
+        self.logger.info(f"Found {len(duplicates)} duplicate pairs (made {comparisons} comparisons instead of {n*(n-1)//2})")
         return duplicates
     
     def remove_duplicates(self, papers: List[Dict]) -> Tuple[List[Dict], int]:
